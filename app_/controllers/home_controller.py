@@ -7,6 +7,7 @@ from app_.config.db import db
 from app_.controllers.funciones import contar_calorias
 from app_.controllers.funciones import calcular_costo_ingredientes
 from app_.controllers.funciones import calcular_rentabilidad
+from app_.controllers.funciones import realizar_venta
 
 
 home_blueprint = Blueprint("home", __name__)
@@ -22,28 +23,19 @@ def vender_producto():
     if request.method == "POST":
         producto_id = request.form.get("producto_id")
         producto = Producto.query.get(producto_id)
-
         heladeria = Heladeria.query.get(1)
-        if producto:
-            for ingrediente in producto.ingredientes:
-                if ingrediente.consumir(ingrediente.cantidad_necesaria):
-                    pass
-                else:
-                    flash(
-                        f"No hay suficiente {ingrediente.nombre} en inventario.",
-                        "danger",
-                    )
-                    return redirect(url_for("home.vender_producto"))
 
-            # Si todos los ingredientes están disponibles, realiza la venta
-            heladeria.ventas_diarias += producto.precio_publico
-            db.session.commit()
-            flash(f"{producto.nombre} vendido exitosamente.", "success")
-            return redirect(url_for("home.vender_producto"))
+        if producto:
+            try:
+                mensaje = realizar_venta(producto, heladeria)
+                flash(mensaje, "success")
+            except ValueError as e:
+                ingrediente_faltante = str(e)
+                flash(f"¡Oh no! Nos hemos quedado sin {ingrediente_faltante}", "danger")
         else:
             flash("Producto no encontrado.", "danger")
 
-        return redirect(url_for("home.home"))
+        return redirect(url_for("home.vender_producto"))
 
     productos = Producto.query.all()
     heladeria = Heladeria.query.get(1)
